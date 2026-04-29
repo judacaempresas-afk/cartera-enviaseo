@@ -1,0 +1,37 @@
+name: Actualizar dashboard desde Google Sheets
+
+on:
+  schedule:
+    # Corre todos los dias a las 6am hora Colombia (UTC-5 = 11am UTC)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    # Permite correrlo manualmente desde GitHub Actions
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests
+
+      - name: Actualizar dashboard
+        run: python update_dashboard.py
+
+      - name: Publicar cambios en GitHub
+        run: |
+          git config user.name "Dashboard Bot"
+          git config user.email "bot@enviaseo.gov.co"
+          git add index.html
+          git diff --staged --quiet || git commit -m "Dashboard actualizado: $(date +'%Y-%m-%d %H:%M') UTC"
+          git push
