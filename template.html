@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cartera Vencida · Enviaseo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0ede8;color:#1a1a1a;min-height:100vh}
+.topbar{background:#0f1f40;color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.topbar h1{font-size:16px;font-weight:600;letter-spacing:.02em}
+.topbar p{font-size:12px;color:#8fa8cc;margin-top:2px}
+.badge{background:#1D9E75;color:#fff;font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600}
+.tabs{background:#fff;border-bottom:1px solid #e5e2db;display:flex;gap:0;padding:0 24px}
+.tab{padding:12px 20px;font-size:13px;font-weight:500;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:#0f1f40}
+.tab.active{color:#0f1f40;border-bottom-color:#3266ad}
+.tab-content{display:none;padding:20px 24px;max-width:1300px;margin:0 auto}
+.tab-content.active{display:block}
+.filters{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.filters label{font-size:12px;color:#666;font-weight:500}
+select,input[type=text]{font-size:13px;padding:6px 10px;border-radius:7px;border:1px solid #ccc;background:#f8f7f5;color:#1a1a1a;cursor:pointer;outline:none}
+select:focus,input[type=text]:focus{border-color:#3266ad}
+.search-wrap{position:relative}
+.search-wrap input{min-width:200px}
+.reset-btn{font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid #ddd;background:#fff;cursor:pointer;color:#555}
+.reset-btn:hover{background:#f0ede8}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.metric{background:#fff;border:1px solid #e5e2db;border-radius:10px;padding:14px 16px}
+.metric-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.metric-value{font-size:22px;font-weight:700;color:#0f1f40;word-break:break-all}
+.metric-sub{font-size:11px;color:#aaa;margin-top:3px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:14px}
+.card{background:#fff;border:1px solid #e5e2db;border-radius:12px;padding:16px 18px}
+.card-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.card-hint{font-weight:400;color:#ccc;font-size:10px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;border-radius:7px;padding:4px 6px;transition:background .15s}
+.bar-row:hover{background:#f5f3f0}
+.bar-row.selected{background:#e8f0fb;outline:1.5px solid #3266ad}
+.bar-label{font-size:11px;color:#444;flex-shrink:0}
+.bar-track{flex:1;background:#f0ede8;border-radius:4px;height:20px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.bar-val{text-align:right;font-size:11px;font-weight:700;flex-shrink:0;color:#222;min-width:120px}
+.active-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;min-height:4px}
+.chip-filter{font-size:11px;padding:3px 10px;border-radius:20px;background:#e8f0fb;color:#1e4b9e;display:flex;align-items:center;gap:5px}
+.chip-filter button{border:none;background:none;cursor:pointer;color:#1e4b9e;font-size:13px;line-height:1;padding:0}
+.section-head{margin:16px 0 10px;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:10px}
+.section-head::after{content:'';flex:1;height:1px;background:#e0ddd8}
+.table-wrap{overflow:auto;max-height:460px;border-radius:10px;border:1px solid #e5e2db}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 12px;background:#f7f5f2;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;z-index:2;cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{background:#edeae5}
+td{padding:8px 12px;border-bottom:1px solid #f0ede8}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+.chip{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600}
+.ok{background:#e8f4ec;color:#1a6b3e}
+.info{background:#e8f0fb;color:#1e4b9e}
+.warn{background:#fef3e2;color:#92580a}
+.danger{background:#fdecea;color:#9b2020}
+.pagination{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:#666}
+.pagination button{padding:5px 12px;border-radius:7px;border:1px solid #ddd;background:#fff;cursor:pointer}
+.pagination button:hover:not(:disabled){background:#f0ede8}
+.pagination button:disabled{opacity:.4;cursor:default}
+.page-info{flex:1;text-align:center;font-size:12px}
+.export-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.export-btn{padding:7px 16px;border-radius:8px;border:1px solid;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-excel{border-color:#1a6b3e;color:#1a6b3e;background:#e8f4ec}
+.btn-excel:hover{background:#1a6b3e;color:#fff}
+.btn-pdf{border-color:#9b2020;color:#9b2020;background:#fdecea}
+.btn-pdf:hover{background:#9b2020;color:#fff}
+.btn-csv{border-color:#555;color:#555;background:#f5f5f5}
+.btn-csv:hover{background:#555;color:#fff}
+.no-data{text-align:center;padding:40px;color:#aaa;font-size:14px}
+.loading{display:flex;align-items:center;justify-content:center;padding:80px;flex-direction:column;gap:12px;color:#666}
+.spinner{width:32px;height:32px;border:3px solid #e0ddd8;border-top-color:#3266ad;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:16px 20px;border-bottom:1px solid #e5e2db;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.modal-head h2{font-size:15px;font-weight:700;color:#0f1f40;flex:1}
+.modal-head button{border:none;background:none;cursor:pointer;font-size:20px;color:#888;flex-shrink:0}
+.modal-body{padding:18px 20px;overflow-y:auto;flex:1}
+.info-grid{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;font-size:13px;margin-bottom:14px}
+.info-key{color:#888;font-size:12px;align-self:center}
+.info-val{color:#1a1a1a;font-weight:500}
+.gestion-box{background:#f7f5f2;border-radius:7px;padding:10px 12px;font-size:12px;color:#555;line-height:1.7;max-height:140px;overflow-y:auto}
+.recovery-bar{background:#e8f4ec;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rec-name{font-size:13px;font-weight:600;color:#0f1f40;flex:1}
+.rec-doc{font-size:11px;color:#888}
+.rec-amount{font-size:15px;font-weight:700;color:#1a6b3e;white-space:nowrap}
+.upload-area{border:2px dashed #d5d0c8;border-radius:12px;padding:20px;text-align:center;margin-top:18px;background:#faf9f7}
+.upload-area h3{font-size:14px;font-weight:600;color:#0f1f40;margin-bottom:4px}
+.upload-area p{font-size:12px;color:#888;margin-bottom:12px}
+.upload-btn{padding:8px 20px;border-radius:8px;border:1px solid #3266ad;background:#fff;color:#3266ad;font-size:13px;font-weight:500;cursor:pointer}
+.upload-btn:hover{background:#3266ad;color:#fff}
+#file-status{font-size:12px;color:#555;margin-top:8px;min-height:16px}
+.rng-rango{width:120px}
+.rng-facturas{width:70px;text-align:right}
+.rng-saldo{width:140px;text-align:right}
+.rng-pct{width:60px;text-align:right}
+.rng-estado{width:90px}
+@media print{.tabs,.filters,.export-row,.upload-area,.pagination,.topbar{display:none!important}.tab-content{display:block!important;padding:0}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Dashboard Gerencial — Cartera Vencida</h1>
+    <p id="topbar-sub">Cargando datos...</p>
+  </div>
+  <span class="badge">ENVIASEO</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('cartera')">Cartera vencida</div>
+  <div class="tab" onclick="switchTab('recuperacion')">Recuperación de cartera</div>
+  <div class="tab" onclick="switchTab('carga')">Cargar datos</div>
+</div>
+
+<!-- TAB 1: CARTERA -->
+<div class="tab-content active" id="tab-cartera">
+  <div id="loading-screen" class="loading">
+    <div class="spinner"></div>
+    <span>Descomprimiendo datos, un momento...</span>
+  </div>
+  <div id="app" style="display:none">
+    <div class="filters">
+      <label>Año</label>
+      <select id="fil-año" onchange="applyFilters()"><option value="">Todos</option></select>
+      <label>Mes</label>
+      <select id="fil-mes" onchange="applyFilters()"><option value="">Todos</option></select>
+      <label>Servicio</label>
+      <select id="fil-servicio" onchange="applyFilters()"><option value="">Todos</option></select>
+      <label>Rango</label>
+      <select id="fil-rango" onchange="applyFilters()"><option value="">Todos</option></select>
+      <div class="search-wrap">
+        <input type="text" id="search-client" placeholder="Buscar por nombre o documento..." oninput="applyFilters()" style="min-width:240px">
+      </div>
+      <button class="reset-btn" onclick="resetFilters()">✕ Limpiar</button>
+    </div>
+
+    <div class="active-chips" id="active-chips"></div>
+
+    <div class="metrics" id="metrics-row"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <p class="card-title">Saldo por rango de vencimiento <span class="card-hint">clic para filtrar</span></p>
+        <div id="range-bars"></div>
+      </div>
+      <div class="card">
+        <p class="card-title">Top servicios por saldo <span class="card-hint">clic para filtrar</span></p>
+        <div id="svc-bars"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <p class="card-title">Evolución mensual del saldo</p>
+      <div style="position:relative;height:190px">
+        <canvas id="monthChart" role="img" aria-label="Evolución mensual saldo cartera"></canvas>
+      </div>
+    </div>
+
+    <div class="section-head">Detalle por rango</div>
+    <div class="table-wrap" style="margin-bottom:16px">
+      <table>
+        <thead><tr>
+          <th class="rng-rango">Rango</th>
+          <th class="rng-facturas" onclick="sortRange('facturas')" style="text-align:right">Facturas</th>
+          <th style="text-align:right" onclick="sortRange('capital')">Capital</th>
+          <th style="text-align:right" onclick="sortRange('interes')">Interés</th>
+          <th class="rng-saldo" onclick="sortRange('saldo')" style="text-align:right">Saldo total</th>
+          <th class="rng-pct" style="text-align:right">%</th>
+          <th class="rng-estado">Estado</th>
+        </tr></thead>
+        <tbody id="rango-table"></tbody>
+      </table>
+    </div>
+
+    <div class="section-head">Clientes</div>
+    <div class="export-row" id="export-row">
+      <button class="export-btn btn-excel" onclick="exportExcel()">⬇ Exportar Excel</button>
+      <button class="export-btn btn-pdf" onclick="exportPDF()">⬇ Exportar PDF</button>
+      <button class="export-btn btn-csv" onclick="exportCSV()">⬇ Exportar CSV</button>
+      <span id="export-label" style="font-size:12px;color:#888;align-self:center"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sortTable('nombre')">Cliente <span id="sort-nombre">↕</span></th>
+          <th onclick="sortTable('documento')">Documento <span id="sort-documento">↕</span></th>
+          <th onclick="sortTable('servicio')">Servicio <span id="sort-servicio">↕</span></th>
+          <th onclick="sortTable('rango')">Rango <span id="sort-rango">↕</span></th>
+          <th onclick="sortTable('dias')" style="text-align:right">Días <span id="sort-dias">↕</span></th>
+          <th onclick="sortTable('capital')" style="text-align:right">Capital <span id="sort-capital">↕</span></th>
+          <th onclick="sortTable('interes')" style="text-align:right">Interés <span id="sort-interes">↕</span></th>
+          <th onclick="sortTable('saldo')" style="text-align:right">Saldo <span id="sort-saldo">↓</span></th>
+          <th>Estado</th>
+        </tr></thead>
+        <tbody id="client-table"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <button id="btn-prev" onclick="changePage(-1)">← Anterior</button>
+      <span class="page-info" id="page-info"></span>
+      <button id="btn-next" onclick="changePage(1)">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: RECUPERACIÓN -->
+<div class="tab-content" id="tab-recuperacion">
+  <div id="rec-content" style="display:none">
+    <div class="metrics" id="rec-metrics"></div>
+    <div class="grid2">
+      <div class="card">
+        <p class="card-title">Recuperación por período</p>
+        <div style="position:relative;height:220px"><canvas id="recChart" role="img" aria-label="Recuperación por mes"></canvas></div>
+      </div>
+      <div class="card">
+        <p class="card-title">Top clientes que pagaron</p>
+        <div id="top-recovery"></div>
+      </div>
+    </div>
+    <div class="section-head">Todos los clientes con pago registrado</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Cliente</th>
+          <th>Documento</th>
+          <th style="text-align:right">Total recuperado</th>
+          <th>Períodos</th>
+        </tr></thead>
+        <tbody id="rec-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: CARGA -->
+<div class="tab-content" id="tab-carga">
+  <div class="card" style="max-width:600px;margin:0 auto">
+    <p class="card-title">Cargar nuevo corte mensual</p>
+    <p style="font-size:13px;color:#666;margin-bottom:16px">Sube el archivo Excel (.xlsx) con la misma estructura de columnas para agregar o actualizar datos en el dashboard.</p>
+    <p style="font-size:12px;color:#888;margin-bottom:8px;font-weight:600">COLUMNAS REQUERIDAS:</p>
+    <p style="font-size:12px;color:#555;background:#f7f5f2;padding:10px;border-radius:7px;margin-bottom:16px">Año · Mes · Servicio · Nombres · Documento · Direccion · Telefono · Nro Cuenta · Fecha · Vencimiento · Dias Vcto · Rango · Capital · Interes · Saldo · Pqr · Gestion</p>
+    <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)">
+    <button class="upload-btn" onclick="document.getElementById('file-input').click()">Seleccionar archivo .xlsx</button>
+    <p id="file-status" style="font-size:12px;color:#555;margin-top:10px;min-height:16px"></p>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">Detalle</h2>
+      <button onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const DATA_B64 = "PLACEHOLDER_DATA";
+
+const MESES_ORDER=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const RANGOS_ORDER=['1. Al día','2. 1 - 30 días','3. 31 - 60 días','4. 61 - 90 días','5. 91 - 180 días','6. 181 - 360 días','7. 361 - 720 días','8. + de 721 días'];
+const RANGO_COLORS={'1. Al día':'#1D9E75','2. 1 - 30 días':'#3266ad','3. 31 - 60 días':'#5b8fd4','4. 61 - 90 días':'#EF9F27','5. 91 - 180 días':'#d97706','6. 181 - 360 días':'#E24B4A','7. 361 - 720 días':'#c23a39','8. + de 721 días':'#8B1A1A'};
+const CHIPS={'1. Al día':'<span class="chip ok">Al día</span>','2. 1 - 30 días':'<span class="chip info">Reciente</span>','3. 31 - 60 días':'<span class="chip info">Reciente</span>','4. 61 - 90 días':'<span class="chip warn">Moderado</span>','5. 91 - 180 días':'<span class="chip warn">Moderado</span>','6. 181 - 360 días':'<span class="chip danger">Crítico</span>','7. 361 - 720 días':'<span class="chip danger">Crítico</span>','8. + de 721 días':'<span class="chip danger">Muy crítico</span>'};
+
+let ALL_DATA=[], RECOVERY_PERIOD={}, RECOVERY_CLIENTS=[];
+let filteredData=[], sortedData=[];
+let currentPage=1, sortCol='saldo', sortDir=-1;
+const PAGE_SIZE=50;
+let monthChart=null, recChart=null;
+
+function N(n){return Math.round(n||0).toLocaleString('es-CO');}
+function COP(n){return '$'+N(n);}
+
+async function loadData(){
+  const bin=atob(DATA_B64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const ds=new DecompressionStream('gzip');
+  const w=ds.writable.getWriter(); w.write(bytes); w.close();
+  const r=ds.readable.getReader();
+  const chunks=[];
+  while(true){const{done,value}=await r.read();if(done)break;chunks.push(value);}
+  const total=chunks.reduce((s,c)=>s+c.length,0);
+  const all=new Uint8Array(total);
+  let off=0; for(const c of chunks){all.set(c,off);off+=c.length;}
+  const bundle=JSON.parse(new TextDecoder().decode(all));
+  ALL_DATA=bundle.records;
+  RECOVERY_PERIOD=bundle.recovery_by_period;
+  RECOVERY_CLIENTS=bundle.recovery_clients;
+  initApp();
+}
+
+function initApp(){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const años=[...new Set(ALL_DATA.map(d=>d.año))].sort();
+  const meses=[...new Set(ALL_DATA.map(d=>d.mes))].sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b));
+  const servicios=[...new Set(ALL_DATA.map(d=>d.servicio))].sort();
+  const sa=document.getElementById('fil-año');
+  años.forEach(a=>sa.innerHTML+=`<option value="${a}">${a}</option>`);
+  const sm=document.getElementById('fil-mes');
+  meses.forEach(m=>sm.innerHTML+=`<option value="${m}">${m}</option>`);
+  const ss=document.getElementById('fil-servicio');
+  servicios.forEach(s=>ss.innerHTML+=`<option value="${s}">${s}</option>`);
+  const sr=document.getElementById('fil-rango');
+  RANGOS_ORDER.forEach(r=>sr.innerHTML+=`<option value="${r}">${r}</option>`);
+  applyFilters();
+  renderRecovery();
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['cartera','recuperacion','carga'][i]===name));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function getF(){
+  return{
+    año:document.getElementById('fil-año').value,
+    mes:document.getElementById('fil-mes').value,
+    servicio:document.getElementById('fil-servicio').value,
+    rango:document.getElementById('fil-rango').value,
+    search:document.getElementById('search-client').value.trim().toLowerCase()
+  };
+}
+
+function applyFilters(){
+  const f=getF();
+  filteredData=ALL_DATA.filter(d=>{
+    if(f.año&&d.año!=f.año)return false;
+    if(f.mes&&d.mes!==f.mes)return false;
+    if(f.servicio&&d.servicio!==f.servicio)return false;
+    if(f.rango&&d.rango!==f.rango)return false;
+    if(f.search){
+      const s=f.search;
+      if(!d.nombre.toLowerCase().includes(s)&&!d.documento.toLowerCase().includes(s))return false;
+    }
+    return true;
+  });
+  currentPage=1;
+  renderAll();
+}
+
+function resetFilters(){
+  ['fil-año','fil-mes','fil-servicio','fil-rango'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('search-client').value='';
+  applyFilters();
+}
+
+function setFilter(key,val){
+  const el=document.getElementById('fil-'+key);
+  el.value=el.value===val?'':val;
+  applyFilters();
+}
+
+function renderAll(){
+  renderChips(); renderMetrics(); renderRangeBars(); renderSvcBars(); renderMonthChart(); renderRangoTable(); renderTable();
+  document.getElementById('topbar-sub').textContent=`${filteredData.length.toLocaleString()} registros · Saldo: ${COP(filteredData.reduce((s,d)=>s+d.saldo,0))}`;
+}
+
+function renderChips(){
+  const f=getF(); const chips=[];
+  if(f.año)chips.push(`<span class="chip-filter">Año: ${f.año}<button onclick="setFilter('año','')">×</button></span>`);
+  if(f.mes)chips.push(`<span class="chip-filter">Mes: ${f.mes}<button onclick="setFilter('mes','')">×</button></span>`);
+  if(f.servicio)chips.push(`<span class="chip-filter">Servicio: ${f.servicio.substring(0,22)}…<button onclick="setFilter('servicio','')">×</button></span>`);
+  if(f.rango)chips.push(`<span class="chip-filter">Rango: ${f.rango.replace(/^\d+\.\s*/,'')}<button onclick="setFilter('rango','')">×</button></span>`);
+  if(f.search)chips.push(`<span class="chip-filter">Búsqueda: "${f.search}"<button onclick="document.getElementById('search-client').value='';applyFilters()">×</button></span>`);
+  document.getElementById('active-chips').innerHTML=chips.join('');
+}
+
+function renderMetrics(){
+  const sal=filteredData.reduce((s,d)=>s+d.saldo,0);
+  const nF=filteredData.length;
+  const nC=new Set(filteredData.map(d=>d.documento)).size;
+  const nM=new Set(filteredData.map(d=>d.mes+d.año)).size;
+  document.getElementById('metrics-row').innerHTML=`
+    <div class="metric"><p class="metric-label">Saldo total</p><p class="metric-value">${COP(sal)}</p><p class="metric-sub">${nM} mes(es) en filtro</p></div>
+    <div class="metric"><p class="metric-label">N° de facturas</p><p class="metric-value">${N(nF)}</p><p class="metric-sub">registros activos</p></div>
+    <div class="metric"><p class="metric-label">Clientes únicos</p><p class="metric-value">${N(nC)}</p><p class="metric-sub">con cartera activa</p></div>
+  `;
+}
+
+function renderRangeBars(){
+  const f=getF();
+  const totals={};
+  filteredData.forEach(d=>{totals[d.rango]=(totals[d.rango]||0)+d.saldo;});
+  const max=Math.max(...Object.values(totals),1);
+  document.getElementById('range-bars').innerHTML=RANGOS_ORDER.map(r=>{
+    const v=totals[r]||0;
+    const sel=f.rango===r;
+    const cnt=filteredData.filter(d=>d.rango===r).length;
+    return`<div class="bar-row${sel?' selected':''}" onclick="setFilter('rango','${r.replace(/'/g,"\'")}')">
+      <span class="bar-label" style="width:115px;font-size:11px">${r.replace(/^\d+\.\s*/,'')}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:${RANGO_COLORS[r]}"></div></div>
+      <span class="bar-val">${COP(v)} <span style="color:#aaa;font-weight:400">(${N(cnt)})</span></span>
+    </div>`;
+  }).join('');
+}
+
+function renderSvcBars(){
+  const f=getF();
+  const totals={};
+  filteredData.forEach(d=>{totals[d.servicio]=(totals[d.servicio]||0)+d.saldo;});
+  const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const max=sorted[0]?sorted[0][1]:1;
+  document.getElementById('svc-bars').innerHTML=sorted.map(([s,v])=>{
+    const sel=f.servicio===s;
+    const label=s.length>30?s.substring(0,28)+'…':s;
+    return`<div class="bar-row${sel?' selected':''}" onclick="toggleSvcFilter('${s.replace(/'/g,"\'").replace(/"/g,'\"')}')">
+      <span class="bar-label" style="width:140px;flex-shrink:0" title="${s}">${label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:#3266ad"></div></div>
+      <span class="bar-val">${COP(v)}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleSvcFilter(s){
+  const sel=document.getElementById('fil-servicio');
+  sel.value=sel.value===s?'':s;
+  applyFilters();
+}
+
+function renderMonthChart(){
+  const ctx=document.getElementById('monthChart');
+  if(monthChart)monthChart.destroy();
+  const byMA={};
+  filteredData.forEach(d=>{const k=d.año+'-'+d.mes;byMA[k]=(byMA[k]||0)+d.saldo;});
+  const años=[...new Set(filteredData.map(d=>d.año))].sort();
+  const cols=['#3266ad','#1D9E75','#E24B4A','#EF9F27'];
+  const datasets=años.map((a,i)=>({
+    label:String(a),
+    data:MESES_ORDER.map(m=>byMA[a+'-'+m]||null),
+    borderColor:cols[i%4],backgroundColor:cols[i%4]+'15',
+    tension:0.3,pointRadius:4,spanGaps:false,borderDash:i>0?[5,3]:[]
+  }));
+  monthChart=new Chart(ctx,{type:'line',data:{labels:MESES_ORDER.map(m=>m.substring(0,3)),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+COP(c.raw)}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:11}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{autoSkip:false,font:{size:11}}}}}});
+}
+
+function renderRangoTable(){
+  const totalSaldo=filteredData.reduce((s,d)=>s+d.saldo,0)||1;
+  document.getElementById('rango-table').innerHTML=RANGOS_ORDER.map(r=>{
+    const rows=filteredData.filter(d=>d.rango===r);
+    const cap=rows.reduce((s,d)=>s+d.capital,0);
+    const inter=rows.reduce((s,d)=>s+d.interes,0);
+    const sal=rows.reduce((s,d)=>s+d.saldo,0);
+    const pct=(sal/totalSaldo*100).toFixed(1);
+    return`<tr>
+      <td>${r}</td>
+      <td style="text-align:right;font-weight:600">${N(rows.length)}</td>
+      <td style="text-align:right">${COP(cap)}</td>
+      <td style="text-align:right">${COP(inter)}</td>
+      <td style="text-align:right;font-weight:700">${COP(sal)}</td>
+      <td style="text-align:right">${pct}%</td>
+      <td>${CHIPS[r]||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+let rangeSortCol='saldo', rangeSortDir=-1;
+function sortRange(col){rangeSortCol=col;rangeSortDir*=-1;renderRangoTable();}
+
+function sortTable(col){
+  if(sortCol===col)sortDir*=-1; else{sortCol=col;sortDir=-1;}
+  document.querySelectorAll('[id^=sort-]').forEach(el=>el.textContent='↕');
+  const el=document.getElementById('sort-'+col);
+  if(el)el.textContent=sortDir>0?'↑':'↓';
+  currentPage=1; renderTable();
+}
+
+function renderTable(){
+  sortedData=[...filteredData].sort((a,b)=>{
+    const av=a[sortCol],bv=b[sortCol];
+    return(typeof av==='number'?(av-bv):(String(av).localeCompare(String(bv))))*sortDir;
+  });
+  const total=sortedData.length;
+  const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+  currentPage=Math.min(currentPage,totalPages);
+  const start=(currentPage-1)*PAGE_SIZE;
+  const page=sortedData.slice(start,start+PAGE_SIZE);
+  if(!page.length){
+    document.getElementById('client-table').innerHTML='<tr><td colspan="9"><div class="no-data">Sin registros para los filtros actuales</div></td></tr>';
+  } else {
+    document.getElementById('client-table').innerHTML=page.map((d,i)=>`
+      <tr style="cursor:pointer" onclick="showDetail(${start+i})">
+        <td><strong>${d.nombre}</strong></td>
+        <td style="font-size:12px">${d.documento}</td>
+        <td style="font-size:12px;color:#666">${d.servicio.length>28?d.servicio.substring(0,26)+'…':d.servicio}</td>
+        <td style="font-size:11px">${d.rango.replace(/^\d+\.\s*/,'')}</td>
+        <td style="text-align:right;color:${d.dias>360?'#9b2020':d.dias>90?'#92580a':'#555'}">${N(d.dias)}</td>
+        <td style="text-align:right;font-size:12px">${COP(d.capital)}</td>
+        <td style="text-align:right;font-size:12px">${COP(d.interes)}</td>
+        <td style="text-align:right;font-weight:700">${COP(d.saldo)}</td>
+        <td>${CHIPS[d.rango]||''}</td>
+      </tr>`).join('');
+  }
+  document.getElementById('page-info').textContent=`Página ${currentPage} de ${totalPages} · ${total.toLocaleString()} registros`;
+  document.getElementById('btn-prev').disabled=currentPage===1;
+  document.getElementById('btn-next').disabled=currentPage===totalPages;
+  const f=getF();
+  const label=f.search||f.año||f.mes||f.rango||f.servicio?`Exportando ${total.toLocaleString()} registros filtrados`:`Exportando todos los registros`;
+  document.getElementById('export-label').textContent=label;
+}
+
+function changePage(dir){currentPage+=dir;renderTable();document.querySelector('.table-wrap').scrollTop=0;}
+
+function showDetail(idx){
+  const d=sortedData[idx]; if(!d)return;
+  document.getElementById('modal-title').textContent=d.nombre;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="info-grid">
+      <span class="info-key">Documento</span><span class="info-val">${d.documento}</span>
+      <span class="info-key">N° Cuenta</span><span class="info-val">${d.cuenta}</span>
+      <span class="info-key">Dirección</span><span class="info-val">${d.direccion}</span>
+      <span class="info-key">Teléfono</span><span class="info-val">${d.telefono}</span>
+      <span class="info-key">Servicio</span><span class="info-val">${d.servicio}</span>
+      <span class="info-key">Año / Mes</span><span class="info-val">${d.año} – ${d.mes}</span>
+      <span class="info-key">Fecha factura</span><span class="info-val">${d.fecha}</span>
+      <span class="info-key">Vencimiento</span><span class="info-val">${d.vencimiento}</span>
+      <span class="info-key">Días vencido</span><span class="info-val" style="color:${d.dias>360?'#9b2020':d.dias>90?'#92580a':'#1a6b3e'};font-weight:700">${N(d.dias)} días</span>
+      <span class="info-key">Rango</span><span class="info-val">${d.rango} ${CHIPS[d.rango]||''}</span>
+      <span class="info-key">Capital</span><span class="info-val">${COP(d.capital)}</span>
+      <span class="info-key">Interés</span><span class="info-val">${COP(d.interes)}</span>
+      <span class="info-key">Saldo total</span><span class="info-val" style="font-size:17px;font-weight:700;color:#0f1f40">${COP(d.saldo)}</span>
+      ${d.pqr&&d.pqr!='nan'?`<span class="info-key">PQR</span><span class="info-val">${d.pqr}</span>`:''}
+    </div>
+    ${d.gestion&&d.gestion!='nan'?`<p style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Gestión realizada</p><div class="gestion-box">${d.gestion.replace(/\. /g,'.<br>')}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="export-btn btn-excel" onclick="exportClientExcel(${idx})">⬇ Excel este cliente</button>
+      <button class="export-btn btn-pdf" onclick="exportClientPDF(${idx})">⬇ PDF este cliente</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+// EXPORTS
+function getExportData(){
+  return sortedData.map(d=>({
+    'Año':d.año,'Mes':d.mes,'Cliente':d.nombre,'Documento':d.documento,
+    'Servicio':d.servicio,'Dirección':d.direccion,'Teléfono':d.telefono,
+    'N° Cuenta':d.cuenta,'Fecha':d.fecha,'Vencimiento':d.vencimiento,
+    'Días Vencido':d.dias,'Rango':d.rango,'Capital':d.capital,
+    'Interés':d.interes,'Saldo':d.saldo,'PQR':d.pqr
+  }));
+}
+
+function exportExcel(){
+  const ws=XLSX.utils.json_to_sheet(getExportData());
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Cartera');
+  const f=getF();
+  const fname=`cartera_${f.año||'todos'}_${f.mes||'todos'}_${f.rango?f.rango.replace(/[^a-zA-Z0-9]/g,'_').substring(0,20):'todos'}.xlsx`;
+  XLSX.writeFile(wb,fname);
+}
+
+function exportCSV(){
+  const data=getExportData();
+  if(!data.length)return;
+  const headers=Object.keys(data[0]);
+  const csv=[headers.join(','),...data.map(r=>headers.map(h=>`"${String(r[h]).replace(/"/g,'""')}"`).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`cartera_exportada.csv`; a.click();
+}
+
+function exportPDF(){
+  const f=getF();
+  const title=`CARTERA VENCIDA · ENVIASEO\nFiltros: Año ${f.año||'Todos'} · Mes ${f.mes||'Todos'} · Rango ${f.rango||'Todos'}\nTotal registros: ${sortedData.length.toLocaleString()} · Saldo: ${COP(sortedData.reduce((s,d)=>s+d.saldo,0))}`;
+  const rows=sortedData.slice(0,500);
+  let html=`<html><head><style>body{font-family:Arial,sans-serif;font-size:11px}h1{font-size:14px;margin-bottom:4px}p{color:#666;font-size:10px;margin-bottom:12px}table{width:100%;border-collapse:collapse}th{background:#0f1f40;color:#fff;padding:6px 8px;text-align:left;font-size:10px}td{padding:5px 8px;border-bottom:1px solid #eee;font-size:10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body>`;
+  html+=`<h1>CARTERA VENCIDA — ENVIASEO</h1><p>Año: ${f.año||'Todos'} | Mes: ${f.mes||'Todos'} | Rango: ${f.rango||'Todos'} | ${sortedData.length.toLocaleString()} registros | Saldo total: ${COP(sortedData.reduce((s,d)=>s+d.saldo,0))}</p>`;
+  html+=`<table><thead><tr><th>Cliente</th><th>Documento</th><th>Servicio</th><th>Rango</th><th>Días</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>`;
+  rows.forEach(d=>{html+=`<tr><td>${d.nombre}</td><td>${d.documento}</td><td>${d.servicio}</td><td>${d.rango}</td><td>${d.dias}</td><td>${COP(d.capital)}</td><td>${COP(d.interes)}</td><td>${COP(d.saldo)}</td></tr>`;});
+  if(sortedData.length>500)html+=`<tr><td colspan="8" style="text-align:center;color:#888">... y ${sortedData.length-500} registros más. Usa Excel para el listado completo.</td></tr>`;
+  html+=`</tbody></table></body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html); w.document.close(); w.focus(); w.print();
+}
+
+function exportClientExcel(idx){
+  const d=sortedData[idx]; if(!d)return;
+  const allRows=ALL_DATA.filter(r=>r.documento===d.documento);
+  const ws=XLSX.utils.json_to_sheet(allRows.map(r=>({'Año':r.año,'Mes':r.mes,'Cliente':r.nombre,'Documento':r.documento,'Servicio':r.servicio,'N° Cuenta':r.cuenta,'Fecha':r.fecha,'Vencimiento':r.vencimiento,'Días Vencido':r.dias,'Rango':r.rango,'Capital':r.capital,'Interés':r.interes,'Saldo':r.saldo,'PQR':r.pqr,'Gestión':r.gestion})));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Cartera');
+  XLSX.writeFile(wb,`cartera_${d.documento.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);
+}
+
+function exportClientPDF(idx){
+  const d=sortedData[idx]; if(!d)return;
+  const allRows=ALL_DATA.filter(r=>r.documento===d.documento);
+  let html=`<html><head><style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h1{font-size:16px;color:#0f1f40}h2{font-size:13px;color:#555;margin:16px 0 6px}table{width:100%;border-collapse:collapse}th{background:#0f1f40;color:#fff;padding:6px 8px;font-size:11px}td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}.total{font-weight:700;background:#f0ede8}.info{display:grid;grid-template-columns:140px 1fr;gap:4px 10px;font-size:12px;margin-bottom:12px}.k{color:#888}.v{font-weight:600}</style></head><body>`;
+  html+=`<h1>CARTERA VENCIDA — ${d.nombre}</h1>`;
+  html+=`<div class="info"><span class="k">Documento</span><span class="v">${d.documento}</span><span class="k">Dirección</span><span class="v">${d.direccion}</span><span class="k">Teléfono</span><span class="v">${d.telefono}</span></div>`;
+  const totalSaldo=allRows.reduce((s,r)=>s+r.saldo,0);
+  html+=`<h2>Facturas en cartera (${allRows.length} registros · Saldo total: ${COP(totalSaldo)})</h2>`;
+  html+=`<table><thead><tr><th>Año</th><th>Mes</th><th>Servicio</th><th>Rango</th><th>Días</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>`;
+  allRows.forEach(r=>{html+=`<tr><td>${r.año}</td><td>${r.mes}</td><td>${r.servicio}</td><td>${r.rango}</td><td>${r.dias}</td><td>${COP(r.capital)}</td><td>${COP(r.interes)}</td><td>${COP(r.saldo)}</td></tr>`;});
+  html+=`<tr class="total"><td colspan="7">TOTAL</td><td>${COP(totalSaldo)}</td></tr>`;
+  html+=`</tbody></table></body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.focus(); w.print();
+}
+
+function renderRecovery(){
+  document.getElementById('rec-content').style.display='block';
+  const totalRec=RECOVERY_CLIENTS.reduce((s,c)=>s+c.total,0);
+  const nCl=RECOVERY_CLIENTS.length;
+  document.getElementById('rec-metrics').innerHTML=`
+    <div class="metric"><p class="metric-label">Total recuperado</p><p class="metric-value">${COP(totalRec)}</p><p class="metric-sub">entre todos los períodos</p></div>
+    <div class="metric"><p class="metric-label">Clientes que pagaron</p><p class="metric-value">${N(nCl)}</p><p class="metric-sub">con reducción de saldo</p></div>
+    <div class="metric"><p class="metric-label">Mejor período</p><p class="metric-value" style="font-size:16px">${(()=>{const e=Object.entries(RECOVERY_PERIOD).sort((a,b)=>b[1]-a[1])[0];return e?e[0].split('-')[1]+' '+e[0].split('-')[0]:'—';})()}</p><p class="metric-sub">${COP((()=>{const e=Object.entries(RECOVERY_PERIOD).sort((a,b)=>b[1]-a[1])[0];return e?e[1]:0;})())}</p></div>
+  `;
+  const ctx=document.getElementById('recChart');
+  if(recChart)recChart.destroy();
+  const sortedP=Object.entries(RECOVERY_PERIOD).sort((a,b)=>{const[ya,ma]=a[0].split('-');const[yb,mb]=b[0].split('-');return(ya*100+MESES_ORDER.indexOf(ma))-(yb*100+MESES_ORDER.indexOf(mb));});
+  recChart=new Chart(ctx,{type:'bar',data:{labels:sortedP.map(([k])=>{const[y,m]=k.split('-');return m.substring(0,3)+' '+y;}),datasets:[{label:'Recuperado',data:sortedP.map(([,v])=>v),backgroundColor:'#1D9E75',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Recuperado: '+COP(c.raw)}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:11}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:11}}}}}});
+  const top10=RECOVERY_CLIENTS.slice(0,8);
+  const maxR=top10[0]?top10[0].total:1;
+  document.getElementById('top-recovery').innerHTML=top10.map(c=>`
+    <div class="bar-row" onclick="searchRecoveryClient('${c.documento}')">
+      <span class="bar-label" style="width:140px;flex-shrink:0;font-size:11px" title="${c.nombre}">${c.nombre.length>22?c.nombre.substring(0,20)+'…':c.nombre}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c.total/maxR*100)}%;background:#1D9E75"></div></div>
+      <span class="bar-val">${COP(c.total)}</span>
+    </div>`).join('');
+  document.getElementById('rec-table').innerHTML=RECOVERY_CLIENTS.map(c=>`
+    <tr style="cursor:pointer" onclick="searchRecoveryClient('${c.documento}')">
+      <td><strong>${c.nombre}</strong></td>
+      <td style="font-size:12px">${c.documento}</td>
+      <td style="text-align:right;font-weight:700;color:#1a6b3e">${COP(c.total)}</td>
+      <td style="font-size:12px;color:#666">${c.periodos.length} período(s)</td>
+    </tr>`).join('');
+}
+
+function searchRecoveryClient(doc){
+  switchTab('cartera');
+  document.getElementById('search-client').value=doc;
+  applyFilters();
+}
+
+function handleFile(event){
+  const file=event.target.files[0]; if(!file)return;
+  const status=document.getElementById('file-status');
+  status.textContent='Procesando '+file.name+'...';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      if(!rows.length||!rows[0].hasOwnProperty('Año')){status.textContent='⚠ Error: columna "Año" no encontrada.';return;}
+      const MESES_N={Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6,Julio:7,Agosto:8,Septiembre:9,Octubre:10,Noviembre:11,Diciembre:12};
+      const newRecs=rows.map(r=>({año:parseInt(r['Año']),mes:String(r['Mes']),servicio:String(r['Servicio']||''),nombre:String(r['Nombres']||''),documento:String(r['Documento']||''),direccion:String(r['Direccion']||''),telefono:String(r['Telefono']||''),cuenta:String(r['Nro Cuenta']||''),fecha:String(r['Fecha']||''),vencimiento:String(r['Vencimiento']||''),dias:parseInt(r['Dias Vcto'])||0,rango:String(r['Rango']||''),capital:parseInt(r['Capital'])||0,interes:parseInt(r['Interes'])||0,saldo:parseInt(r['Saldo'])||0,pqr:String(r['Pqr']||''),gestion:String(r['Gestion']||''),periodo:parseInt(r['Año'])*100+(MESES_N[r['Mes']]||0)}));
+      const newKeys=new Set(newRecs.map(d=>d.año+'-'+d.mes));
+      newKeys.forEach(k=>{const[a,m]=k.split('-');for(let i=ALL_DATA.length-1;i>=0;i--){if(ALL_DATA[i].año==a&&ALL_DATA[i].mes===m)ALL_DATA.splice(i,1);}});
+      ALL_DATA.push(...newRecs);
+      const meses=[...new Set(ALL_DATA.map(d=>d.mes))].sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b));
+      const sm=document.getElementById('fil-mes');
+      const cv=sm.value; sm.innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join(''); sm.value=cv;
+      applyFilters();
+      status.textContent=`✓ ${newRecs.length.toLocaleString()} registros cargados. Períodos: ${[...newKeys].join(', ')}`;
+    }catch(err){status.textContent='⚠ Error: '+err.message;}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+loadData();
+</script>
+</body>
+</html>
