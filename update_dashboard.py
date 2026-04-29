@@ -1,7 +1,7 @@
 import requests, json, gzip, base64, sys
 from io import StringIO
 
-SHEET_ID = "1FwVTs_sEjbEbi2BSscJFwpXzpYE0ySsy"
+SHEET_ID = "1EV9amwtbaXBxWo8iwel7i8GYwRPiYrMTqH9q1B6rHFI"
 SHEET_NAME = "Cartera"
 MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
