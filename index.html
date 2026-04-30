@@ -225,8 +225,9 @@ tr:hover td{background:#fafaf8}
 <!-- TAB PERFIL -->
 <div class="tab-content" id="tab-perfil">
   <div class="perfil-search">
-    <input type="text" id="perfil-input" placeholder="Escribe nombre o número de documento del cliente..." oninput="buscarPerfil()" style="font-size:14px;padding:10px 14px">
+    <input type="text" id="perfil-input" placeholder="Escribe nombre o número de documento..." oninput="buscarPerfil()" style="font-size:14px;padding:10px 14px;min-width:260px">
     <select id="perfil-select" onchange="seleccionarCliente()" style="min-width:300px;font-size:13px"><option value="">-- Selecciona un cliente --</option></select>
+    <button class="reset-btn" onclick="limpiarPerfil()">✕ Limpiar</button>
     <button class="ebtn e-pdf" onclick="exportPerfilPDF()">⬇ PDF Informe</button>
     <button class="ebtn e-xl" onclick="exportPerfilExcel()">⬇ Excel</button>
   </div>
@@ -460,6 +461,7 @@ function initSelects(){
   const ra=document.getElementById('rec-año');años.forEach(a=>ra.innerHTML+=`<option value="${a}">${a}</option>`);
   MESES_ORDER.forEach(m=>{document.getElementById('rec-mes-ini').innerHTML+=`<option value="${m}">${m}</option>`;document.getElementById('rec-mes-fin').innerHTML+=`<option value="${m}">${m}</option>`;});
   document.getElementById('rec-mes-fin').value='Diciembre';
+  cargarTodosClientes();
 }
 
 function switchTab(name){
@@ -621,19 +623,35 @@ function showDetail(idx){
 // ══════════════════════════════════════
 // PERFIL DE CLIENTE
 // ══════════════════════════════════════
+function cargarTodosClientes(){
+  const sel=document.getElementById('perfil-select');
+  const clientes={};
+  ALL_DATA.forEach(d=>{if(!clientes[d.documento])clientes[d.documento]=d.nombre;});
+  const opts=Object.entries(clientes).sort((a,b)=>a[1].localeCompare(b[1]));
+  sel.innerHTML='<option value="">-- Selecciona un cliente ('+opts.length+') --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} · ${doc}</option>`).join('');
+}
+
 function buscarPerfil(){
   const q=document.getElementById('perfil-input').value.trim().toLowerCase();
   const sel=document.getElementById('perfil-select');
-  if(q.length<2){sel.innerHTML='<option value="">-- Selecciona un cliente --</option>';return;}
+  if(q.length<1){cargarTodosClientes();return;}
   const clientes={};
   ALL_DATA.forEach(d=>{
     if(d.nombre.toLowerCase().includes(q)||d.documento.toLowerCase().includes(q)){
       if(!clientes[d.documento])clientes[d.documento]=d.nombre;
     }
   });
-  const opts=Object.entries(clientes).slice(0,30);
-  sel.innerHTML='<option value="">-- Selecciona un cliente --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} (${doc})</option>`).join('');
+  const opts=Object.entries(clientes).sort((a,b)=>a[1].localeCompare(b[1])).slice(0,50);
+  sel.innerHTML='<option value="">-- '+opts.length+' cliente(s) encontrado(s) --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} · ${doc}</option>`).join('');
   if(opts.length===1){sel.value=opts[0][0];seleccionarCliente();}
+}
+
+function limpiarPerfil(){
+  document.getElementById('perfil-input').value='';
+  cargarTodosClientes();
+  perfilCliente=null;
+  document.getElementById('perfil-empty').style.display='block';
+  document.getElementById('perfil-content').style.display='none';
 }
 
 function verPerfil(doc){
