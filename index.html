@@ -672,13 +672,19 @@ function seleccionarCliente(){
   const filas=ALL_DATA.filter(d=>d.documento===doc).sort((a,b)=>a.periodo-b.periodo);
   if(!filas.length)return;
   perfilCliente={doc,filas};
-  // Populate año/mes filters for this client
-  const años=[...new Set(filas.map(d=>d.año))].sort();
-  const meses=[...new Set(filas.map(d=>d.mes))].sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b));
+  // Siempre resetear a "Todos" antes de poblar para evitar valores fantasma
   const pa=document.getElementById('perfil-año');
   const pm=document.getElementById('perfil-mes');
+  pa.value='';
+  pm.value='';
+  // Poblar con años/meses del cliente seleccionado
+  const años=[...new Set(filas.map(d=>d.año))].sort();
+  const meses=[...new Set(filas.map(d=>d.mes))].sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b));
   pa.innerHTML='<option value="">Todos</option>'+años.map(a=>`<option value="${a}">${a}</option>`).join('');
   pm.innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  // Confirmar que quedan en "Todos"
+  pa.value='';
+  pm.value='';
   renderPerfilFiltrado();
 }
 
@@ -687,9 +693,18 @@ function renderPerfilFiltrado(){
   const {doc,filas}=perfilCliente;
   const año=document.getElementById('perfil-año').value;
   const mes=document.getElementById('perfil-mes').value;
+  // Actualizar opciones de mes según año seleccionado
+  const pm=document.getElementById('perfil-mes');
+  const mesesDisponibles=año
+    ? [...new Set(filas.filter(d=>d.año==año).map(d=>d.mes))].sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b))
+    : [...new Set(filas.map(d=>d.mes))].sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b));
+  pm.innerHTML='<option value="">Todos</option>'+mesesDisponibles.map(m=>`<option value="${m}">${m}</option>`).join('');
+  // Restaurar mes seleccionado si aún está disponible
+  if(mes&&mesesDisponibles.includes(mes))pm.value=mes; else pm.value='';
+  const mesActual=pm.value;
   let filtered=filas;
   if(año)filtered=filtered.filter(d=>d.año==año);
-  if(mes)filtered=filtered.filter(d=>d.mes===mes);
+  if(mesActual)filtered=filtered.filter(d=>d.mes===mesActual);
   if(!filtered.length){
     document.getElementById('perfil-content').style.display='none';
     document.getElementById('perfil-empty').style.display='block';
