@@ -259,7 +259,7 @@ tr:hover td{background:#fafaf8}
     <p class="perfil-section-title">Historial de facturas</p>
     <div class="perfil-facturas-wrap">
       <table><thead><tr>
-        <th>Año</th><th>Mes</th><th>Servicio</th><th>Rango</th>
+        <th>Año</th><th>Mes</th><th>Factura</th><th>Servicio</th><th>Rango</th>
         <th style="text-align:right">Días</th><th style="text-align:right">Capital</th>
         <th style="text-align:right">Interés</th><th style="text-align:right">Saldo</th>
       </tr></thead><tbody id="perfil-facturas"></tbody></table>
@@ -361,12 +361,24 @@ function COP(n){return'$'+N(n);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
 
 async function decompressB64(b64){
-  const resp=await fetch('data:application/gzip;base64,'+b64);
-  const blob=await resp.blob();
-  const ds=new DecompressionStream('gzip');
-  const decompResp=new Response(blob.stream().pipeThrough(ds));
-  const text=await decompResp.text();
-  return JSON.parse(text);
+  // Chunk atob to avoid UI freeze
+  return new Promise(resolve=>{
+    setTimeout(async()=>{
+      const bin=atob(b64);
+      const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+      const ds=new DecompressionStream('gzip');
+      const w=ds.writable.getWriter();
+      w.write(bytes);w.close();
+      const r=ds.readable.getReader();
+      const chunks=[];
+      while(true){const{done,value}=await r.read();if(done)break;chunks.push(value);}
+      const total=chunks.reduce((s,c)=>s+c.length,0);
+      const all=new Uint8Array(total);
+      let off=0;for(const c of chunks){all.set(c,off);off+=c.length;}
+      resolve(JSON.parse(new TextDecoder().decode(all)));
+    },50);
+  });
 }
 
 function parseCSV(text){
@@ -439,7 +451,7 @@ function initSelects(){
   const ra=document.getElementById('rec-año');años.forEach(a=>ra.innerHTML+=`<option value="${a}">${a}</option>`);
   MESES_ORDER.forEach(m=>{document.getElementById('rec-mes-ini').innerHTML+=`<option value="${m}">${m}</option>`;document.getElementById('rec-mes-fin').innerHTML+=`<option value="${m}">${m}</option>`;});
   document.getElementById('rec-mes-fin').value='Diciembre';
-  cargarTodosClientes();
+  setTimeout(cargarTodosClientes, 200);
 }
 
 function switchTab(name){
@@ -763,10 +775,10 @@ function renderPerfil(doc,filas){
     <div class="perfil-metric"><p class="perfil-metric-label">Total recuperado</p><p class="perfil-metric-val" style="color:#1a6b3e">${COP(an.totalRecuperado)}</p></div>
     <div class="perfil-metric"><p class="perfil-metric-label">Último pago</p><p class="perfil-metric-val" style="font-size:14px">${an.ultimoPago?an.ultimoPago.mes+' '+an.ultimoPago.año:'Sin pagos'}</p></div>`;
 
-  // Gráfico evolución
+  // Gráfico evolución - usa las filas ya filtradas por año/mes
   const byPeriodo={};
   filas.forEach(d=>{const k=d.año+'-'+d.mes;byPeriodo[k]=(byPeriodo[k]||0)+d.saldo;});
-  const sortedPeriodos=Object.entries(byPeriodo).sort((a,b)=>{const[ya,ma]=a[0].split('-');const[yb,mb]=b[0].split('-');return(ya*100+MESES_ORDER.indexOf(ma))-(yb*100+MESES_ORDER.indexOf(mb));});
+  const sortedPeriodos=Object.entries(byPeriodo).sort((a,b)=>{const[ya,ma]=a[0].split('-');const[yb,mb]=b[0].split('-');return(parseInt(ya)*100+MESES_ORDER.indexOf(ma))-(parseInt(yb)*100+MESES_ORDER.indexOf(mb));});
   const ctx=document.getElementById('perfilChart');
   if(perfilChart)perfilChart.destroy();
   perfilChart=new Chart(ctx,{type:'line',data:{labels:sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return m.substring(0,3)+' '+y;}),datasets:[{label:'Saldo',data:sortedPeriodos.map(([,v])=>v),borderColor:'#E24B4A',backgroundColor:'rgba(226,75,74,0.1)',tension:0.3,pointRadius:5,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Saldo: '+COP(c.raw)}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}}}}}});
@@ -792,7 +804,8 @@ function renderPerfil(doc,filas){
   document.getElementById('perfil-facturas').innerHTML=filasOrd.map(d=>`
     <tr>
       <td>${d.año}</td><td>${d.mes}</td>
-      <td style="font-size:12px;color:#666">${d.servicio.length>25?d.servicio.substring(0,23)+'…':d.servicio}</td>
+      <td style="font-size:12px;font-weight:600;color:#3266ad">${d.cuenta}</td>
+      <td style="font-size:12px;color:#666">${d.servicio.length>22?d.servicio.substring(0,20)+'…':d.servicio}</td>
       <td>${CHIPS_MAP[d.rango]||d.rango}</td>
       <td style="text-align:right;color:${d.dias>360?'#9b2020':d.dias>90?'#92580a':'#555'}">${N(d.dias)}</td>
       <td style="text-align:right">${COP(d.capital)}</td>
@@ -803,9 +816,17 @@ function renderPerfil(doc,filas){
 
 function exportPerfilPDF(){
   if(!perfilCliente)return;
-  const {doc,filas}=perfilCliente;
+  const {doc,filas:filasAll}=perfilCliente;
+  // Use filtered data based on año/mes selectors
+  const año=document.getElementById('perfil-año').value;
+  const mes=document.getElementById('perfil-mes').value;
+  let filas=filasAll;
+  if(año)filas=filas.filter(d=>d.año==año);
+  if(mes)filas=filas.filter(d=>d.mes===mes);
+  if(!filas.length)filas=filasAll;
   const an=analizarCliente(filas,REC_DETAIL);
   const d0=filas[0];
+  const periodoLabel=año&&mes?`${mes} ${año}`:año?`Año ${año}`:'Todo el historial';
   const fecha=new Date().toLocaleDateString('es-CO');
   let html=`<html><head><style>
     body{font-family:Arial,sans-serif;font-size:11px;padding:24px;color:#1a1a1a}
@@ -833,7 +854,7 @@ function exportPerfilPDF(){
     .ck{color:#888}.cv{font-weight:600}
   </style></head><body>`;
   html+=`<h1>INFORME DE PERFIL DE CARTERA</h1>`;
-  html+=`<p class="sub">Generado el ${fecha} · Enviaseo · Sistema de Gestión de Cartera Vencida</p>`;
+  html+=`<p class="sub">Generado el ${fecha} · Enviaseo · Período: ${periodoLabel}</p>`;
   html+=`<div class="semaforo ${an.semaforo}"><h2>${an.icono} ${an.titulo}</h2><p>${an.descripcion}</p></div>`;
   html+=`<div class="contact">
     <span class="ck">Cliente</span><span class="cv">${d0.nombre}</span>
@@ -864,7 +885,13 @@ function exportPerfilPDF(){
 
 function exportPerfilExcel(){
   if(!perfilCliente)return;
-  const {filas}=perfilCliente;
+  const {filas:filasAll}=perfilCliente;
+  const año=document.getElementById('perfil-año').value;
+  const mes=document.getElementById('perfil-mes').value;
+  let filas=filasAll;
+  if(año)filas=filas.filter(d=>d.año==año);
+  if(mes)filas=filas.filter(d=>d.mes===mes);
+  if(!filas.length)filas=filasAll;
   const ws=XLSX.utils.json_to_sheet(filas.map(d=>({'Año':d.año,'Mes':d.mes,'Cliente':d.nombre,'Documento':d.documento,'Servicio':d.servicio,'Dirección':d.direccion,'Teléfono':d.telefono,'N° Cuenta':d.cuenta,'Fecha':d.fecha,'Vencimiento':d.vencimiento,'Días mora':d.dias,'Rango':d.rango,'Capital':d.capital,'Interés':d.interes,'Saldo':d.saldo,'PQR':d.pqr,'Gestión':d.gestion})));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Perfil');
   XLSX.writeFile(wb,`perfil_${filas[0].documento.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);
