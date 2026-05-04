@@ -142,7 +142,7 @@ tr:hover td{background:#fafaf8}
 
 <div class="topbar">
   <div>
-    <h1>Dashboard Gerencial — Cartera Vencida</h1>
+    <h1>Dashboard Gerencial — Cartera Vencida - Dirección Comercial</h1>
     <p id="topbar-sub">Cargando datos...</p>
   </div>
   <div class="topbar-right">
@@ -206,6 +206,8 @@ tr:hover td{background:#fafaf8}
         <th onclick="sortTable('nombre')">Cliente <span id="s-nombre">↕</span></th>
         <th onclick="sortTable('documento')">Documento <span id="s-documento">↕</span></th>
         <th onclick="sortTable('cuenta')">Factura <span id="s-cuenta">↕</span></th>
+        <th onclick="sortTable('fecha')">Fecha <span id="s-fecha">↕</span></th>
+        <th onclick="sortTable('vencimiento')">Vencimiento <span id="s-vencimiento">↕</span></th>
         <th onclick="sortTable('servicio')">Servicio <span id="s-servicio">↕</span></th>
         <th onclick="sortTable('rango')">Rango <span id="s-rango">↕</span></th>
         <th onclick="sortTable('dias')" style="text-align:right">Días <span id="s-dias">↕</span></th>
@@ -259,7 +261,8 @@ tr:hover td{background:#fafaf8}
     <p class="perfil-section-title">Historial de facturas</p>
     <div class="perfil-facturas-wrap">
       <table><thead><tr>
-        <th>Año</th><th>Mes</th><th>Factura</th><th>Servicio</th><th>Rango</th>
+        <th>Año</th><th>Mes</th><th>Factura</th><th>Fecha</th><th>Vencimiento</th>
+        <th>Servicio</th><th>Rango</th>
         <th style="text-align:right">Días</th><th style="text-align:right">Capital</th>
         <th style="text-align:right">Interés</th><th style="text-align:right">Saldo</th>
       </tr></thead><tbody id="perfil-facturas"></tbody></table>
@@ -549,8 +552,16 @@ function renderMonthChart(){
 function renderRangoTable(){
   const total=filteredData.reduce((s,d)=>s+d.saldo,0)||1;
   document.getElementById('rango-table').innerHTML=RANGOS_ORDER.map(r=>{
-    const rows=filteredData.filter(d=>d.rango===r),sal=rows.reduce((s,d)=>s+d.saldo,0);
-    return`<tr><td>${r}</td><td style="text-align:right;font-weight:600">${N(rows.length)}</td><td style="text-align:right;font-weight:700">${COP(sal)}</td><td style="text-align:right">${(sal/total*100).toFixed(1)}%</td><td>${CHIPS_MAP[r]||''}</td></tr>`;
+    const rows=filteredData.filter(d=>d.rango===r);
+    const sal=rows.reduce((s,d)=>s+d.saldo,0);
+    // Fecha más antigua y vencimiento más lejano del rango
+    return`<tr>
+      <td>${r}</td>
+      <td style="text-align:right;font-weight:600">${N(rows.length)}</td>
+      <td style="text-align:right;font-weight:700">${COP(sal)}</td>
+      <td style="text-align:right">${(sal/total*100).toFixed(1)}%</td>
+      <td>${CHIPS_MAP[r]||''}</td>
+    </tr>`;
   }).join('');
 }
 
@@ -571,6 +582,8 @@ function renderTable(){
       <td><strong style="cursor:pointer;color:#3266ad" onclick="event.stopPropagation();verPerfil('${d.documento}')">${d.nombre}</strong></td>
       <td style="font-size:12px">${d.documento}</td>
       <td style="font-size:12px;font-weight:600;color:#3266ad">${d.cuenta}</td>
+      <td style="font-size:12px;color:#555">${d.fecha||'—'}</td>
+      <td style="font-size:12px;color:#555">${d.vencimiento||'—'}</td>
       <td style="font-size:12px;color:#666">${d.servicio.length>28?d.servicio.substring(0,26)+'…':d.servicio}</td>
       <td style="font-size:11px">${d.rango.replace(/^\d+\.\s*/,'')}</td>
       <td style="text-align:right;color:${d.dias>360?'#9b2020':d.dias>90?'#92580a':'#555'}">${N(d.dias)}</td>
@@ -578,7 +591,7 @@ function renderTable(){
       <td style="text-align:right;font-size:12px">${COP(d.interes)}</td>
       <td style="text-align:right;font-weight:700">${COP(d.saldo)}</td>
       <td>${CHIPS_MAP[d.rango]||''}</td>
-    </tr>`).join(''):'<tr><td colspan="9"><div class="no-data">Sin registros</div></td></tr>';
+    </tr>`).join(''):'<tr><td colspan="11"><div class="no-data">Sin registros</div></td></tr>';
   document.getElementById('page-info').textContent=`Página ${curPage} de ${totalPages} · ${total.toLocaleString()} registros`;
   document.getElementById('btn-prev').disabled=curPage===1;
   document.getElementById('btn-next').disabled=curPage===totalPages;
@@ -851,6 +864,8 @@ function renderPerfil(doc,filas){
     <tr>
       <td>${d.año}</td><td>${d.mes}</td>
       <td style="font-size:12px;font-weight:600;color:#3266ad">${d.cuenta}</td>
+      <td style="font-size:12px;color:#555">${d.fecha||'—'}</td>
+      <td style="font-size:12px;color:#555">${d.vencimiento||'—'}</td>
       <td style="font-size:12px;color:#666">${d.servicio.length>22?d.servicio.substring(0,20)+'…':d.servicio}</td>
       <td>${CHIPS_MAP[d.rango]||d.rango}</td>
       <td style="text-align:right;color:${d.dias>360?'#9b2020':d.dias>90?'#92580a':'#555'}">${N(d.dias)}</td>
