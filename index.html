@@ -1073,15 +1073,15 @@ function handleFile(event){
       const mn={};MESES_ORDER.forEach((m,i)=>mn[m]=i+1);
       const toInt=v=>parseInt(String(v).replace(/[^0-9.-]/g,'')||0)||0;
       const newRecs=rows.map(r=>({
-        año:parseInt(r['Año']),mes:String(r['Mes']||'''),
-        servicio:String(r['Servicio']||'''),nombre:String(r['Nombres']||'''),
-        documento:String(r['Documento']||'''),direccion:String(r['Direccion']||'''),
-        telefono:String(r['Telefono']||'''),cuenta:String(r['Nro Cuenta']||'''),
-        fecha:String(r['Fecha']||'''),vencimiento:String(r['Vencimiento']||'''),
-        dias:toInt(r['Dias Vcto']),rango:String(r['Rango']||'''),
+        año:parseInt(r['Año']),mes:String(r['Mes']||''),
+        servicio:String(r['Servicio']||''),nombre:String(r['Nombres']||''),
+        documento:String(r['Documento']||''),direccion:String(r['Direccion']||''),
+        telefono:String(r['Telefono']||''),cuenta:String(r['Nro Cuenta']||''),
+        fecha:String(r['Fecha']||''),vencimiento:String(r['Vencimiento']||''),
+        dias:toInt(r['Dias Vcto']),rango:String(r['Rango']||''),
         capital:toInt(r['Capital']),interes:toInt(r['Interes']),
-        saldo:toInt(r['Saldo']),pqr:String(r['Pqr']||'''),
-        gestion:String(r['Gestion']||'''),
+        saldo:toInt(r['Saldo']),pqr:String(r['Pqr']||''),
+        gestion:String(r['Gestion']||''),
         periodo:parseInt(r['Año'])*100+(mn[r['Mes']]||0)
       })).filter(r=>r.año&&r.mes);
 
