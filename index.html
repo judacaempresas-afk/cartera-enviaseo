@@ -361,12 +361,11 @@ function COP(n){return'$'+N(n);}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
 
 async function decompressB64(b64){
-  // Convert base64 to binary using fetch blob (faster than atob loop)
   const resp=await fetch('data:application/gzip;base64,'+b64);
   const blob=await resp.blob();
   const ds=new DecompressionStream('gzip');
-  const decompBlob=new Response(blob.stream().pipeThrough(ds));
-  const text=await decompBlob.text();
+  const decompResp=new Response(blob.stream().pipeThrough(ds));
+  const text=await decompResp.text();
   return JSON.parse(text);
 }
 
@@ -940,6 +939,53 @@ function exportCSV(){const data=getExportData();if(!data.length)return;const h=O
 function exportPDF(){const f=getF();let html=`<html><head><style>body{font-family:Arial;font-size:11px;padding:16px}h1{font-size:14px;color:#0f1f40}p{color:#666;font-size:10px;margin-bottom:10px}table{width:100%;border-collapse:collapse}th{background:#0f1f40;color:#fff;padding:5px 8px;font-size:10px;text-align:left}td{padding:4px 8px;border-bottom:1px solid #eee;font-size:10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body>`;html+=`<h1>CARTERA VENCIDA — ENVIASEO</h1><p>Año: ${f.año||'Todos'} | Mes: ${f.mes||'Todos'} | ${sortedData.length.toLocaleString()} registros | Saldo: ${COP(sortedData.reduce((s,d)=>s+d.saldo,0))}</p>`;html+=`<table><thead><tr><th>Cliente</th><th>Documento</th><th>Servicio</th><th>Rango</th><th>Días</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>`;sortedData.slice(0,500).forEach(d=>{html+=`<tr><td>${d.nombre}</td><td>${d.documento}</td><td>${d.servicio}</td><td>${d.rango}</td><td>${d.dias}</td><td>${COP(d.capital)}</td><td>${COP(d.interes)}</td><td>${COP(d.saldo)}</td></tr>`;});html+=`</tbody></table></body></html>`;const w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();w.print();}
 function exportClientExcel(idx){const d=sortedData[idx];if(!d)return;const rows=ALL_DATA.filter(r=>r.documento===d.documento);const ws=XLSX.utils.json_to_sheet(rows.map(r=>({'Año':r.año,'Mes':r.mes,'Cliente':r.nombre,'Documento':r.documento,'Servicio':r.servicio,'N° Cuenta':r.cuenta,'Fecha':r.fecha,'Vencimiento':r.vencimiento,'Días':r.dias,'Rango':r.rango,'Capital':r.capital,'Interés':r.interes,'Saldo':r.saldo})));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Cartera');XLSX.writeFile(wb,`cliente_${d.documento.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);}
 function exportClientPDF(idx){const d=sortedData[idx];if(!d)return;const rows=ALL_DATA.filter(r=>r.documento===d.documento);const total=rows.reduce((s,r)=>s+r.saldo,0);let html=`<html><head><style>body{font-family:Arial;font-size:12px;padding:20px}h1{font-size:16px;color:#0f1f40}table{width:100%;border-collapse:collapse}th{background:#0f1f40;color:#fff;padding:6px 8px;font-size:11px}td{padding:5px 8px;border-bottom:1px solid #eee;font-size:11px}.tot{font-weight:700;background:#f0ede8}</style></head><body>`;html+=`<h1>${d.nombre}</h1><p>Doc: ${d.documento} | Tel: ${d.telefono} | Dir: ${d.direccion}</p>`;html+=`<table><thead><tr><th>Año</th><th>Mes</th><th>Servicio</th><th>Rango</th><th>Días</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>`;rows.forEach(r=>{html+=`<tr><td>${r.año}</td><td>${r.mes}</td><td>${r.servicio}</td><td>${r.rango}</td><td>${r.dias}</td><td>${COP(r.capital)}</td><td>${COP(r.interes)}</td><td>${COP(r.saldo)}</td></tr>`;});html+=`<tr class="tot"><td colspan="7">TOTAL</td><td>${COP(total)}</td></tr></tbody></table></body></html>`;const w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();w.print();}
+
+
+
+async function syncFromSheet(){
+  const btn=document.querySelector('.sync-btn');
+  const status=document.getElementById('sync-status');
+  btn.textContent='↻ Cargando...';btn.style.opacity='0.6';
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+    const resp=await fetch(url);if(!resp.ok)throw new Error('Sin acceso');
+    const text=await resp.text();const records=parseCSV(text);
+    if(!records||records.length<10)throw new Error('Datos insuficientes');
+    ALL_DATA=records;REC_DETAIL=buildRecovery(records);
+    status.textContent=`✓ Live · ${new Date().toLocaleString('es-CO')}`;
+    applyFilters();applyRecFilters();updateTabBadges();
+    toast(`✓ ${records.length.toLocaleString()} registros actualizados`);
+  }catch(e){status.textContent='⚠ '+e.message;toast('⚠ No se pudo sincronizar.');}
+  finally{btn.textContent='↻ Sincronizar';btn.style.opacity='1';}
+}
+
+async function init(){
+  const bundle=await decompressB64(STATIC_B64);
+  ALL_DATA=bundle.records;
+  REC_DETAIL=bundle.recovery_detail;
+  initSelects();applyFilters();applyRecFilters();
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('rec-app').style.display='block';
+  updateTabBadges();
+  // Auto-sync from Google Sheets
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+    const resp=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    if(resp.ok){
+      const text=await resp.text();
+      const records=parseCSV(text);
+      if(records&&records.length>10){
+        ALL_DATA=records;
+        REC_DETAIL=buildRecovery(records);
+        document.getElementById('sync-status').textContent=`✓ Live · ${new Date().toLocaleString('es-CO')}`;
+        applyFilters();applyRecFilters();updateTabBadges();
+      }
+    }
+  }catch(e){
+    document.getElementById('sync-status').textContent='Datos locales';
+  }
+}
 
 // ══ CARGA ARCHIVO ══
 function handleFile(event){
