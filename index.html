@@ -614,35 +614,46 @@ function showDetail(idx){
 // ══════════════════════════════════════
 // PERFIL DE CLIENTE
 // ══════════════════════════════════════
+let _clienteOptsHTML=''; // cache para no reconstruir 1350 opciones cada vez
+
 function cargarTodosClientes(){
   const sel=document.getElementById('perfil-select');
-  const clientes={};
-  ALL_DATA.forEach(d=>{if(!clientes[d.documento])clientes[d.documento]=d.nombre;});
-  const opts=Object.entries(clientes).sort((a,b)=>a[1].localeCompare(b[1]));
-  sel.innerHTML='<option value="">-- Selecciona un cliente ('+opts.length+') --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} · ${doc}</option>`).join('');
+  if(!_clienteOptsHTML){
+    const clientes={};
+    ALL_DATA.forEach(d=>{if(!clientes[d.documento])clientes[d.documento]=d.nombre;});
+    const opts=Object.entries(clientes).sort((a,b)=>a[1].localeCompare(b[1]));
+    _clienteOptsHTML='<option value="">-- Selecciona un cliente ('+opts.length+') --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} · ${doc}</option>`).join('');
+  }
+  sel.innerHTML=_clienteOptsHTML;
 }
 
+let _buscarTimer=null;
 function buscarPerfil(){
-  const q=document.getElementById('perfil-input').value.trim().toLowerCase();
-  const sel=document.getElementById('perfil-select');
-  if(q.length<1){cargarTodosClientes();return;}
-  const clientes={};
-  ALL_DATA.forEach(d=>{
-    if(d.nombre.toLowerCase().includes(q)||d.documento.toLowerCase().includes(q)){
-      if(!clientes[d.documento])clientes[d.documento]=d.nombre;
-    }
-  });
-  const opts=Object.entries(clientes).sort((a,b)=>a[1].localeCompare(b[1])).slice(0,50);
-  sel.innerHTML='<option value="">-- '+opts.length+' cliente(s) encontrado(s) --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} · ${doc}</option>`).join('');
-  if(opts.length===1){sel.value=opts[0][0];seleccionarCliente();}
+  // Debounce para no filtrar en cada tecla
+  clearTimeout(_buscarTimer);
+  _buscarTimer=setTimeout(()=>{
+    const q=document.getElementById('perfil-input').value.trim().toLowerCase();
+    const sel=document.getElementById('perfil-select');
+    if(q.length<1){cargarTodosClientes();return;}
+    const clientes={};
+    ALL_DATA.forEach(d=>{
+      if(d.nombre.toLowerCase().includes(q)||d.documento.toLowerCase().includes(q)){
+        if(!clientes[d.documento])clientes[d.documento]=d.nombre;
+      }
+    });
+    const opts=Object.entries(clientes).sort((a,b)=>a[1].localeCompare(b[1])).slice(0,50);
+    sel.innerHTML='<option value="">-- '+opts.length+' cliente(s) encontrado(s) --</option>'+opts.map(([doc,nom])=>`<option value="${doc}">${nom} · ${doc}</option>`).join('');
+    if(opts.length===1){sel.value=opts[0][0];seleccionarCliente();}
+  },200);
 }
 
 function limpiarPerfil(){
   document.getElementById('perfil-input').value='';
   document.getElementById('perfil-año').innerHTML='<option value="">Todos</option>';
   document.getElementById('perfil-mes').innerHTML='<option value="">Todos</option>';
-  cargarTodosClientes();
+  cargarTodosClientes(); // uses cached HTML - fast
   perfilCliente=null;
+  if(perfilChart){perfilChart.destroy();perfilChart=null;}
   document.getElementById('perfil-empty').style.display='block';
   document.getElementById('perfil-empty').innerHTML='<div class="icon">🔍</div><p>Busca un cliente para ver su análisis de comportamiento de cartera</p>';
   document.getElementById('perfil-content').style.display='none';
@@ -1028,6 +1039,7 @@ function handleFile(event){
       const newKeys=new Set(newRecs.map(d=>d.año+'-'+d.mes));
       newKeys.forEach(k=>{const[a,m]=k.split('-');for(let i=ALL_DATA.length-1;i>=0;i--){if(ALL_DATA[i].año==a&&ALL_DATA[i].mes===m)ALL_DATA.splice(i,1);}});
       ALL_DATA.push(...newRecs);REC_DETAIL=buildRecovery(ALL_DATA);
+      _clienteOptsHTML=''; // reset cache after file load
       applyFilters();applyRecFilters();updateTabBadges();
       status.textContent=`✓ ${newRecs.length.toLocaleString()} registros cargados. Períodos: ${[...newKeys].join(', ')}`;
       toast(`✓ ${newRecs.length.toLocaleString()} registros cargados`);
