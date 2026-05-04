@@ -805,19 +805,29 @@ function renderPerfil(doc,filas){
     <div class="perfil-metric"><p class="perfil-metric-label">Total recuperado</p><p class="perfil-metric-val" style="color:#1a6b3e">${COP(an.totalRecuperado)}</p></div>
     <div class="perfil-metric"><p class="perfil-metric-label">Último pago</p><p class="perfil-metric-val" style="font-size:14px">${an.ultimoPago?an.ultimoPago.mes+' '+an.ultimoPago.año:'Sin pagos'}</p></div>`;
 
-  // Gráfico evolución - usa las filas ya filtradas por año/mes
+  // Gráfico evolución - SIEMPRE muestra el año completo seleccionado
+  // Si hay mes filtrado, igual muestra todos los meses del año
+  const aValChart=document.getElementById('perfil-año').value;
+  const filasChart=perfilCliente
+    ? (aValChart
+        ? perfilCliente.filas.filter(d=>d.año==aValChart)
+        : perfilCliente.filas)
+    : filas;
   const byPeriodo={};
-  filas.forEach(d=>{const k=d.año+'-'+d.mes;byPeriodo[k]=(byPeriodo[k]||0)+d.saldo;});
+  filasChart.forEach(d=>{const k=d.año+'-'+d.mes;byPeriodo[k]=(byPeriodo[k]||0)+d.saldo;});
   const sortedPeriodos=Object.entries(byPeriodo).sort((a,b)=>{const[ya,ma]=a[0].split('-');const[yb,mb]=b[0].split('-');return(parseInt(ya)*100+MESES_ORDER.indexOf(ma))-(parseInt(yb)*100+MESES_ORDER.indexOf(mb));});
-  // Si solo hay un año en los datos mostrados, usar solo nombre de mes como label
-  const añosEnData=[...new Set(sortedPeriodos.map(([k])=>k.split('-')[0]))];
-  const chartLabels=sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return añosEnData.length===1?m.substring(0,3):m.substring(0,3)+' '+y;});
+  // Siempre usar solo nombre de mes como label (el año es fijo)
+  const chartLabels=sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return m.substring(0,3);});
   const ctx=document.getElementById('perfilChart');
   if(perfilChart)perfilChart.destroy();
-  perfilChart=new Chart(ctx,{type:'line',data:{labels:chartLabels,datasets:[{label:'Saldo',data:sortedPeriodos.map(([,v])=>v),borderColor:'#E24B4A',backgroundColor:'rgba(226,75,74,0.1)',tension:0.3,pointRadius:5,pointHoverRadius:7,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Saldo: '+COP(c.raw),title:t=>{const[y,m]=sortedPeriodos[t[0].dataIndex][0].split('-');return m+' '+y;}}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}}}}}});
-  // Mostrar año seleccionado en título del gráfico
+  // Resaltar el mes filtrado si hay uno seleccionado
+  const mValChart=document.getElementById('perfil-mes').value;
+  const pointColors=sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return mValChart&&m===mValChart?'#0f1f40':'#E24B4A';});
+  const pointSizes=sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return mValChart&&m===mValChart?8:4;});
+  perfilChart=new Chart(ctx,{type:'line',data:{labels:chartLabels,datasets:[{label:'Saldo',data:sortedPeriodos.map(([,v])=>v),borderColor:'#E24B4A',backgroundColor:'rgba(226,75,74,0.08)',tension:0.3,pointRadius:pointSizes,pointBackgroundColor:pointColors,pointHoverRadius:8,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Saldo: '+COP(c.raw),title:t=>{const[y,m]=sortedPeriodos[t[0].dataIndex][0].split('-');return m+' '+y;}}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}}}}}});
+  // Título del gráfico
   const tEl=document.getElementById('perfil-chart-title');
-  if(tEl){const aVal=document.getElementById('perfil-año').value;const mVal=document.getElementById('perfil-mes').value;tEl.textContent=aVal&&mVal?'· '+mVal+' '+aVal:aVal?'· Año '+aVal:añosEnData.length===1?'· Año '+añosEnData[0]:'· Todos los períodos';}
+  if(tEl){tEl.textContent=aValChart?'· Año '+aValChart:'· Todos los períodos';}
 
   // Recomendación y contacto
   const d0=filas[0];
