@@ -805,9 +805,12 @@ function renderPerfil(doc,filas){
   const byPeriodo={};
   filas.forEach(d=>{const k=d.año+'-'+d.mes;byPeriodo[k]=(byPeriodo[k]||0)+d.saldo;});
   const sortedPeriodos=Object.entries(byPeriodo).sort((a,b)=>{const[ya,ma]=a[0].split('-');const[yb,mb]=b[0].split('-');return(parseInt(ya)*100+MESES_ORDER.indexOf(ma))-(parseInt(yb)*100+MESES_ORDER.indexOf(mb));});
+  // Si solo hay un año en los datos mostrados, usar solo nombre de mes como label
+  const añosEnData=[...new Set(sortedPeriodos.map(([k])=>k.split('-')[0]))];
+  const chartLabels=sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return añosEnData.length===1?m.substring(0,3):m.substring(0,3)+' '+y;});
   const ctx=document.getElementById('perfilChart');
   if(perfilChart)perfilChart.destroy();
-  perfilChart=new Chart(ctx,{type:'line',data:{labels:sortedPeriodos.map(([k])=>{const[y,m]=k.split('-');return m.substring(0,3)+' '+y;}),datasets:[{label:'Saldo',data:sortedPeriodos.map(([,v])=>v),borderColor:'#E24B4A',backgroundColor:'rgba(226,75,74,0.1)',tension:0.3,pointRadius:5,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Saldo: '+COP(c.raw)}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}}}}}});
+  perfilChart=new Chart(ctx,{type:'line',data:{labels:chartLabels,datasets:[{label:'Saldo',data:sortedPeriodos.map(([,v])=>v),borderColor:'#E24B4A',backgroundColor:'rgba(226,75,74,0.1)',tension:0.3,pointRadius:5,pointHoverRadius:7,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Saldo: '+COP(c.raw),title:t=>{const[y,m]=sortedPeriodos[t[0].dataIndex][0].split('-');return m+' '+y;}}}},scales:{y:{ticks:{callback:v=>COP(v),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}}}}}});
 
   // Recomendación y contacto
   const d0=filas[0];
@@ -906,7 +909,13 @@ function exportPerfilPDF(){
   const totalFil=filas.reduce((s,d)=>s+d.saldo,0);
   html+=`<tr style="font-weight:700;background:#f0ede8"><td colspan="7">TOTAL</td><td>${COP(totalFil)}</td></tr>`;
   html+=`</tbody></table><div class="footer">Informe generado automáticamente · Enviaseo · ${fecha}</div></body></html>`;
-  const w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();w.print();
+  // Use iframe to avoid blocking the parent window after print
+  let iframe=document.getElementById('_print_iframe');
+  if(!iframe){iframe=document.createElement('iframe');iframe.id='_print_iframe';iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:0';document.body.appendChild(iframe);}
+  iframe.srcdoc=html;
+  iframe.onload=function(){
+    try{iframe.contentWindow.focus();iframe.contentWindow.print();}catch(e){const w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();w.print();}
+  };
 }
 
 function exportPerfilExcel(){
